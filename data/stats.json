@@ -1,0 +1,42 @@
+{
+  "source": "ecdict",
+  "builtAt": "2026-07-31T08:46:22.239Z",
+  "books": [
+    {
+      "id": "zk",
+      "name": "中考",
+      "count": 1600
+    },
+    {
+      "id": "gk",
+      "name": "高考",
+      "count": 3674
+    },
+    {
+      "id": "cet4",
+      "name": "CET-4",
+      "count": 3846
+    },
+    {
+      "id": "cet6",
+      "name": "CET-6",
+      "count": 5406
+    },
+    {
+      "id": "ky",
+      "name": "考研",
+      "count": 4801
+    }
+  ],
+  "freqAdded": 15000,
+  "totalUnique": 22415,
+  "withDef": 159362,
+  "fileBytes": 6350914,
+  "wordroot": {
+    "count": 611,
+    "curatedExamples": 3667,
+    "reverseIndexed": 4477,
+    "fileBytes": 146897
+  },
+  "sha256": "fca8a52dad317b8b08809ac13938fb7b4561bbfcfac666fc8e96ab9101f82d8e"
+}

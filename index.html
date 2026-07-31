@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#4f46e5">
+  <title>词书 · 英语单词本</title>
+  <!-- iOS：添加到主屏幕后以独立 App 启动（无 Safari 导航栏） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="词书">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 侧栏 -->
+    <aside id="sidebar">
+      <div class="brand">📖 <span>词书</span></div>
+      <div class="sidebar-group">
+        <div class="group-label">我的</div>
+        <nav id="nav-mine"></nav>
+      </div>
+      <div class="sidebar-group">
+        <div class="group-label">词书</div>
+        <nav id="nav-books"></nav>
+      </div>
+      <div class="sidebar-group">
+        <div class="group-label">工具</div>
+        <nav>
+          <button class="book-item" id="btn-roots" data-rootview>
+            <span>词根词缀</span>
+            <span class="bcount" id="roots-count"></span>
+          </button>
+        </nav>
+      </div>
+      <div class="sidebar-footer">
+        <button id="btn-export" title="把『我的单词本』导出为 JSON 文件">导出备份</button>
+        <button id="btn-import" title="从 JSON 文件导入单词">导入备份</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+    </aside>
+
+    <!-- 主区 -->
+    <main id="main">
+      <header id="main-header">
+        <h1 id="book-title"></h1>
+        <span id="book-count" class="count"></span>
+        <span id="app-version" class="app-version"></span>
+        <div class="header-actions">
+          <select id="search-scope" title="搜索范围">
+            <option value="book">当前词书</option>
+            <option value="all">全部词书</option>
+          </select>
+          <input id="search" type="search" placeholder="输入英文或中文搜索…" autocomplete="off">
+          <button id="btn-add" class="primary">＋ 添加单词</button>
+          <button id="btn-select-mode" class="ghost">选择</button>
+          <button id="btn-select-all" class="ghost" hidden>全选</button>
+          <button id="btn-print" class="ghost" hidden>打印<span id="print-count"></span></button>
+          <button id="btn-display" class="ghost" title="显示设置">显示</button>
+          <div id="display-panel" class="panel" hidden>
+            <div class="panel-title">显示设置</div>
+            <label class="toggle"><input type="checkbox" id="set-hide-en"> 屏蔽英文（只显示中文释义）</label>
+            <label class="toggle"><input type="checkbox" id="set-hide-zh"> 屏蔽中文（只显示英文+音标）</label>
+            <label class="toggle"><input type="checkbox" id="set-hide-ph"> 屏蔽音标</label>
+            <label class="toggle"><input type="checkbox" id="set-show-ph"> 显示音标</label>
+            <label class="toggle"><input type="checkbox" id="set-peek"> 遮住全部，点击才显示</label>
+            <div class="panel-row">
+              <span class="panel-label">发音口音</span>
+              <select id="set-voice">
+                <option value="us">美音</option>
+                <option value="uk">英音</option>
+              </select>
+            </div>
+            <div class="panel-row">
+              <span class="panel-label">排序方式</span>
+              <select id="set-order">
+                <option value="asc">正序</option>
+                <option value="random">乱序</option>
+              </select>
+              <button id="btn-reshuffle" class="mini-btn" type="button" hidden>重新打乱</button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div id="word-list"></div>
+      <div id="list-sentinel"></div>
+      <div id="empty-state" hidden></div>
+    </main>
+
+    <!-- 全局浮动"添加"按钮：任何页面、任何滚动位置都可用 -->
+    <button id="fab-add" type="button" title="添加单词" aria-label="添加单词">＋</button>
+  </div>
+
+  <!-- 添加单词弹窗 -->
+  <div id="modal" class="overlay" hidden>
+    <div class="modal-box">
+      <div class="modal-title">添加单词</div>
+      <div class="add-input-wrap">
+        <input id="add-input" type="text" placeholder="输入英文单词…" autocomplete="off" spellcheck="false">
+        <div id="suggest-dropdown"></div>
+      </div>
+      <div id="manual-fields" hidden>
+        <input id="add-phonetic" type="text" placeholder="音标（可选）" spellcheck="false">
+        <textarea id="add-zh" rows="2" placeholder="中文释义（必填）"></textarea>
+      </div>
+      <div id="add-preview" hidden></div>
+      <div id="add-msg" class="msg"></div>
+      <div class="modal-actions">
+        <button id="btn-cancel" class="ghost">取消</button>
+        <button id="btn-confirm" class="primary">添加到单词本</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 详情弹窗 -->
+  <div id="detail-modal" class="overlay" hidden>
+    <div class="modal-box">
+      <div class="modal-title" id="detail-title"></div>
+      <div id="detail-body"></div>
+      <div class="modal-actions">
+        <button id="detail-close" class="ghost">关闭</button>
+        <button id="detail-edit" class="ghost" hidden>编辑</button>
+        <button id="detail-save" class="primary" hidden>保存</button>
+        <button id="detail-favorite" class="primary" hidden>＋ 收藏到我的单词本</button>
+        <button id="detail-delete" class="danger" hidden>删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 词根词缀详情弹窗 -->
+  <div id="root-modal" class="overlay" hidden>
+    <div class="modal-box">
+      <div class="modal-title" id="root-title"></div>
+      <div id="root-body"></div>
+      <div class="modal-actions">
+        <button id="root-close" class="ghost">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 打印设置弹窗 -->
+  <div id="print-modal" class="overlay" hidden>
+    <div class="modal-box">
+      <div class="modal-title">打印设置</div>
+      <p class="print-tip">选择要打印的内容，便于复习（如只印英文做自测）</p>
+      <label class="toggle"><input type="checkbox" id="print-en" checked> 包含英文单词</label>
+      <label class="toggle"><input type="checkbox" id="print-ph" checked> 包含音标</label>
+      <label class="toggle"><input type="checkbox" id="print-zh" checked> 包含中文释义</label>
+      <div class="modal-actions">
+        <button id="print-cancel" class="ghost">取消</button>
+        <button id="print-confirm" class="primary">打印</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 打印区域（仅打印时显示） -->
+  <div id="print-root"></div>
+
+  <!-- 脚本按依赖顺序加载 -->
+  <script src="data/vocab-data.js"></script>
+  <script src="data/wordroot.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/vocab.js"></script>
+  <script src="js/roots.js"></script>
+  <script src="js/view.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
