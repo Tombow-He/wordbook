@@ -262,6 +262,39 @@ async function main() {
   await evalJS('document.getElementById("btn-roots").click()'); // 退出词根模式
   await evalJS('document.querySelector("#sidebar [data-book=mine]").click()');
 
+  console.log('== 5.12. 全局快捷键 ==');
+  /* / 键聚焦搜索 */
+  await evalJS('document.body.click()'); // 确保焦点不在输入框
+  await evalJS('document.dispatchEvent(new KeyboardEvent("keydown", { key: "/", bubbles: true }))');
+  const slashFocus = await evalJS('document.activeElement === document.getElementById("search")');
+  check('/ 键聚焦搜索', slashFocus === true, slashFocus);
+  /* Ctrl+K 聚焦搜索 */
+  await evalJS('document.body.click()');
+  await evalJS('document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))');
+  const ctrlKFocus = await evalJS('document.activeElement === document.getElementById("search")');
+  check('Ctrl+K 聚焦搜索', ctrlKFocus === true, ctrlKFocus);
+  /* N 键打开添加弹窗 */
+  await evalJS('document.body.click()');
+  await evalJS('document.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true }))');
+  const nOpen = await evalJS('document.getElementById("modal").hidden === false');
+  check('N 键打开添加弹窗', nOpen === true, nOpen);
+  await evalJS('document.getElementById("btn-cancel").click()');
+  /* → 键切词书（当前 mine → 下一个 zk） */
+  await evalJS('document.querySelector("#sidebar [data-book=mine]").click()');
+  await evalJS('document.body.click()');
+  await evalJS('document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }))');
+  const rightBook = await evalJS('App.state.currentBook');
+  check('→ 键切换词书', rightBook === 'zk', rightBook);
+  /* ← 键切回 */
+  await evalJS('document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }))');
+  const leftBook = await evalJS('App.state.currentBook');
+  check('← 键切换词书', leftBook === 'mine', leftBook);
+  /* 输入框内不触发（输入 n 不弹添加）：在真实输入框上派发 keydown */
+  await evalJS('document.querySelector("#sidebar [data-book=zk]").click()');
+  const inInput = await evalJS('(function(){ var s = document.getElementById("search"); var before = document.getElementById("modal").hidden; s.dispatchEvent(new KeyboardEvent("keydown", { key: "n", bubbles: true })); return before === document.getElementById("modal").hidden; })()');
+  check('输入框内 N 不触发添加', inInput === true, inInput);
+  await evalJS('document.querySelector("#sidebar [data-book=mine]").click()');
+
   console.log('== 6. 词书切换 ==');
   await evalJS('document.querySelector("#sidebar [data-book=cet4]").click()');
   const cet4Title = await evalJS('document.getElementById("book-title").textContent');

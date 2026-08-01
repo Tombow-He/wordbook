@@ -819,6 +819,56 @@ App.ui = (function () {
   }
 
   /* ---- 事件绑定 ---- */
+  /* ---- 全局快捷键 ----
+   * / 或 Ctrl+K → 聚焦搜索；N / A → 添加单词；←/→ → 切词书
+   * 输入框/弹窗内不拦截（避免冲突）
+   */
+  function bindShortcuts() {
+    var bookIds = ['mine'].concat(App.vocab.books.map(function (b) { return b.id; }));
+
+    document.addEventListener('keydown', function (ev) {
+      /* 输入框、弹窗内不触发全局快捷键 */
+      var tag = ev.target && ev.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      var modalOpen = !$('modal').hidden || !$('detail-modal').hidden || !$('print-modal').hidden || !$('root-modal').hidden;
+      if (modalOpen) return;
+
+      /* / 或 Ctrl+K → 聚焦搜索 */
+      if (ev.key === '/' || (ev.key.toLowerCase() === 'k' && (ev.ctrlKey || ev.metaKey))) {
+        ev.preventDefault();
+        if (state.mode === 'roots') { state.mode = 'book'; render(); }
+        $('search').focus();
+        $('search').select();
+        return;
+      }
+
+      /* N 或 A → 打开添加弹窗（排除 Ctrl/Cmd/Alt 组合键） */
+      if ((ev.key.toLowerCase() === 'n' || ev.key.toLowerCase() === 'a') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+        ev.preventDefault();
+        if (state.mode === 'roots') { state.mode = 'book'; render(); }
+        openAdd();
+        return;
+      }
+
+      /* ←/→ → 切词书（仅在词书模式） */
+      if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+        if (state.mode !== 'book') return;
+        var idx = bookIds.indexOf(state.currentBook);
+        if (idx < 0) return;
+        var next = ev.key === 'ArrowLeft' ? (idx - 1 + bookIds.length) % bookIds.length : (idx + 1) % bookIds.length;
+        state.currentBook = bookIds[next];
+        state.mode = 'book';
+        state.search = '';
+        $('search').value = '';
+        state.selected = new Set();
+        state.selectMode = false;
+        state.visibleCount = 300;
+        App.store.setLastBook(state.currentBook);
+        render();
+      }
+    });
+  }
+
   function bind() {
     document.addEventListener('click', function (ev) {
       var t = ev.target;
@@ -964,6 +1014,9 @@ App.ui = (function () {
       reshuffleAll();
       renderList();
     });
+
+    /* 全局快捷键 */
+    bindShortcuts();
 
     /* 添加弹窗 */
     $('btn-add').addEventListener('click', openAdd);
