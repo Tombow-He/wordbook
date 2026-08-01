@@ -149,25 +149,23 @@ App.ui = (function () {
   function wordOf(e) { return e.w || e.word || ''; }
   function zhOf(e) { return e.zh || ''; }
 
-  /* 全局搜索：跨所有词书（含我的单词本）搜索英文或中文 */
+  /* 全局搜索：跨所有词（全部词库 + 我的单词本）搜索英文或中文 */
   function globalSearch(q) {
     var out = [];
+    var seen = {};
     /* 我的单词本 */
     App.store.getAll().forEach(function (w) {
       if (wordOf(w).toLowerCase().indexOf(q) >= 0 || zhOf(w).toLowerCase().indexOf(q) >= 0) {
+        seen['m:' + w.id] = true;
         out.push({ kind: 'mine', e: w });
       }
     });
-    /* 各内置词书（去重：同一单词显示第一个命中的书） */
-    var seen = {};
-    App.vocab.books.forEach(function (b) {
-      App.vocab.getWords(b.id).forEach(function (w) {
-        if (seen[w.w]) return;
-        if (w.w.toLowerCase().indexOf(q) >= 0 || (w.zh || '').toLowerCase().indexOf(q) >= 0) {
-          seen[w.w] = true;
-          out.push({ kind: 'book', book: b.id, e: w });
-        }
-      });
+    /* 全部词库（all 含 5 本词书 + 高频补全词；带来源书则标注，无则标"全部"） */
+    App.vocab.all.forEach(function (w) {
+      if (w.w.toLowerCase().indexOf(q) >= 0 || (w.zh || '').toLowerCase().indexOf(q) >= 0) {
+        var book = (w.s && w.s[0]) || 'all';
+        out.push({ kind: 'book', book: book, e: w });
+      }
     });
     return out;
   }
@@ -972,9 +970,13 @@ App.ui = (function () {
           if (rec2) openDetail(rec2, true);
         } else if (r.getAttribute('data-word')) {
           var w2 = r.getAttribute('data-word');
-          /* 全局搜索结果行带来源书 data-book；普通内置行无则用当前词书 */
-          var bookId = r.getAttribute('data-book') || state.currentBook;
-          var found2 = App.vocab.getWords(bookId).find(function (x) { return x.w === w2; });
+          /* 优先用完整词库查找（覆盖高频补全词等无词书来源的词） */
+          var found2 = App.vocab.lookupExact(w2);
+          if (!found2) {
+            /* 兜底：当前词书 */
+            var bookId = state.currentBook;
+            found2 = App.vocab.getWords(bookId).find(function (x) { return x.w === w2; });
+          }
           if (found2) openDetail(found2, false);
         }
         return;
@@ -1059,13 +1061,16 @@ App.ui = (function () {
     $('detail-save').addEventListener('click', saveEdit);
     $('detail-favorite').addEventListener('click', function () {
       var modal = $('detail-modal');
-      var found = App.vocab.getWords(modal._bookId).find(function (x) { return x.w === modal._word; });
+      var w = modal._word;
+      var found = App.vocab.lookupExact(w);   // 优先查完整词库（含无词书来源的高频词）
       if (found) {
-        var res = App.store.add(found.w, found.p, found.zh, modal._bookId);
+        var res = App.store.add(found.w, found.p, found.zh, found.s && found.s[0] || '');
         closeDetail();
         render();
         if (res.ok) toast('已收藏『' + found.w + '』');
         else toast('『' + found.w + '』已在单词本中');
+      } else {
+        toast('词库中无此词');
       }
     });
     $('detail-delete').addEventListener('click', function () {

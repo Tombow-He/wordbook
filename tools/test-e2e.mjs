@@ -369,14 +369,31 @@ async function main() {
   const cnt4 = await evalJS('App.store.count()');
   check('还原备份为 2 词', cnt4 === 2, cnt4);
 
+  console.log('== 8.5. 详情内收藏（搜索结果打开的词） ==');
+  /* 从全局搜索结果打开详情 → 点详情内收藏按钮 → 应成功 */
+  const favBefore = await evalJS('App.store.count()');
+  await evalJS('document.querySelector("#sidebar [data-book=cet4]").click()');
+  await evalJS('document.getElementById("search-scope").value = "all"; document.getElementById("search-scope").dispatchEvent(new Event("change"))');
+  await evalJS('(function(){ var s = document.getElementById("search"); s.value = "benevolent"; s.dispatchEvent(new Event("input")); })()');
+  await evalJS('document.querySelector("#word-list .row").click()');   // 打开详情
+  const favBtnVisible = await evalJS('document.getElementById("detail-favorite").hidden === false');
+  check('详情收藏按钮可见', favBtnVisible === true, favBtnVisible);
+  await evalJS('document.getElementById("detail-favorite").click()');
+  const favAfter = await evalJS('App.store.count()');
+  check('详情收藏后单词本 +1 (' + (favAfter - favBefore) + ')', favAfter === favBefore + 1, favAfter);
+  await evalJS('(function(){ var s = document.getElementById("search"); s.value = ""; s.dispatchEvent(new Event("input")); })()');
+  await evalJS('document.getElementById("search-scope").value = "book"; document.getElementById("search-scope").dispatchEvent(new Event("change"))');
+  await evalJS('document.querySelector("#sidebar [data-book=mine]").click()');
+
   console.log('== 9. 详情 / 编辑 / 删除 ==');
   await evalJS('document.querySelector("#word-list .row").click()');
   const detailOpen = await evalJS('document.getElementById("detail-modal").hidden === false');
   check('点击行打开详情', detailOpen === true);
   await evalJS('document.getElementById("detail-close").click()');
+  const cntBefore = await evalJS('App.store.count()');
   await evalJS('App.store.remove(App.store.getAll()[0].id); App.ui.render()');
   const cnt5 = await evalJS('App.store.count()');
-  check('删除后 1 词', cnt5 === 1, cnt5);
+  check('删除后减少 1 词 (' + cntBefore + '→' + cnt5 + ')', cnt5 === cntBefore - 1, cnt5);
 
   ws.close();
   child.kill();
